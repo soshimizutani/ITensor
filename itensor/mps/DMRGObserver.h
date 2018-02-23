@@ -113,14 +113,15 @@ measure(Args const& args)
                 if(p > 1E-13) S += p*log(p);
                 }
             S *= -1;
-            printfln("    vN Entropy at center bond b=%d = %.12f",N/2,S);
-            printf(  "    Eigs at center bond b=%d: ",N/2);
+            Args::global().add("S_ent", S);
+            //printfln("    vN Entropy at center bond b=%d = %.12f",N/2,S);
+            //printf(  "    Eigs at center bond b=%d: ",N/2);
             auto ten = decltype(center_eigs.size())(10);
             for(auto j : range(std::min(center_eigs.size(),ten)))
                 {
                 auto eig = center_eigs(j);
                 if(eig < 1E-3) break;
-                printf("%.4f ",eig);
+                //printf("%.4f ",eig);
                 }
             println();
             }
@@ -131,11 +132,13 @@ measure(Args const& args)
     if(b == 1 && ha == 2) 
         {
         if(!printeigs) println();
-        println("    Largest m during sweep ",sw," was ",(max_eigs > 1 ? max_eigs : 1));
+        //println("    Largest m during sweep ",sw," was ",(max_eigs > 1 ? max_eigs : 1));
+            Args::global().add("Largest m", (max_eigs > 1 ? max_eigs : 1));
         max_eigs = -1;
-        println("    Largest truncation error: ",(max_te > 0 ? max_te : 0.));
+        //println("    Largest truncation error: ",(max_te > 0 ? max_te : 0.));
+            Args::global().add("Largest truncation", (max_te > 0 ? max_te : 0.));
         max_te = -1;
-        printfln("    Energy after sweep %d is %.12f",sw,energy);
+        //printfln("    Energy after sweep %d is %.12f",sw,energy);
         }
 
     }
@@ -147,20 +150,24 @@ checkDone(Args const& args)
     {
     const int sw = args.getInt("Sweep",0);
     const Real energy = args.getReal("Energy",0);
+    const int min_nsweeps=args.getInt("min_nsweep",10);
     
     if(sw == 1) last_energy_ = 1000;
-    if(energy_errgoal > 0 && sw%2 == 0)
-        {
-        Real dE = std::fabs(energy-last_energy_);
-        if(dE < energy_errgoal)
+    
+    if(sw >= min_nsweeps){
+        if(energy_errgoal > 0 && sw%2 == 0)
             {
-            printfln("    Energy error goal met (dE = %.3E < %.3E); returning after %d sweeps.",
-                      dE, energy_errgoal, sw);
-            last_energy_ = 1000;
-            return true;
+            Real dE = std::fabs(energy-last_energy_);
+            if(dE < energy_errgoal)
+                {
+                printfln("\n\n Energy error goal met (dE = %.3E < %.3E); exiting after %d sweeps.",
+                          dE, energy_errgoal, sw);
+                last_energy_ = 1000;
+                return true;
+                }
             }
-        }
-    last_energy_ = energy;
+        last_energy_ = energy;
+    }
 
     //If STOP_DMRG found, will return true (i.e. done) once, but 
     //outer calling using same Observer may continue running e.g. infinite dmrg calling finite dmrg.
