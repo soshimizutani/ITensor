@@ -13,17 +13,18 @@
 #include "itensor/mps/DMRGObserver.h"
 #include "itensor/util/cputime.h"
 
-#include "soshi_dmrg/myfunctions/write_to_file.cpp"
+#include "../../soshi_dmrg/myfunctions/write_to_file.cpp"
+#include "itensor/mps/mpo.h"
 
 using std::vector;
 
 
 namespace itensor {
-    
+
     //
     // Available DMRG methods:
     //
-    
+
     //
     //DMRG with an MPO
     //
@@ -38,7 +39,7 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,args);
         return energy;
     }
-    
+
     //
     //DMRG with an MPO and custom DMRGObserver
     //
@@ -54,7 +55,7 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,obs,args);
         return energy;
     }
-    
+
     //
     //DMRG with an MPO and boundary tensors LH, RH
     // LH - H1 - H2 - ... - HN - RH
@@ -72,7 +73,7 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,args);
         return energy;
     }
-    
+
     //
     //DMRG with an MPO and boundary tensors LH, RH
     //and a custom observer
@@ -90,7 +91,7 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,obs,args);
         return energy;
     }
-    
+
     //
     //DMRG with a set of MPOs (lazily summed)
     //(H vector is 0-indexed)
@@ -106,7 +107,7 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,args);
         return energy;
     }
-    
+
     //
     //DMRG with a set of MPOs and a custom DMRGObserver
     //(H vector is 0-indexed)
@@ -123,7 +124,7 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,obs,args);
         return energy;
     }
-    
+
     //
     //DMRG with a single Hamiltonian MPO and a set of
     //MPS to orthogonalize against
@@ -146,7 +147,7 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,args);
         return energy;
     }
-    
+
     //
     //DMRG with a single Hamiltonian MPO,
     //a set of MPS to orthogonalize against,
@@ -171,13 +172,13 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,obs,args);
         return energy;
     }
-    
-    
-    
+
+
+
     //
     // DMRGWorker
     //
-    
+
     template <class Tensor, class LocalOpT>
     Real inline
     DMRGWorker(MPSt<Tensor>& psi,
@@ -189,7 +190,7 @@ namespace itensor {
         Real energy = DMRGWorker(psi,PH,sweeps,obs,args);
         return energy;
     }
-    
+
     template <class Tensor, class LocalOpT>
     Real
     DMRGWorker(MPSt<Tensor>& psi,
@@ -200,12 +201,12 @@ namespace itensor {
     {
         const bool quiet = args.getBool("Quiet",false);
         const int debug_level = args.getInt("DebugLevel",(quiet ? 0 : 1));
-        
+
         const int N = psi.N();
         Real energy = NAN;
-        
+
         psi.position(1);
-        
+
         args.add("DebugLevel",debug_level);
         args.add("DoNormalize",true);
         println("===========================================================================");
@@ -214,12 +215,21 @@ namespace itensor {
         printf(" |%-5s|  %-8s|   %-8s | %-4s |   %-10s |  %-6s | %-6s |", "Sweep", "Energy", "S_ent", "max m", "max trun", "CPU(s)", "Wall(s)");
 
         std::vector<double> E_v, SvN_v, bond_v, trun_v, cpu_v, wall_v;
+
+        auto save_psi=Args::global().getBool("DMRG_save_psi");
+
+
+        auto runname=Args::global().getString("runname");
+        std::string filename="psi0";
         
-        
+        if(save_psi){
+          write_to_file::wavefunction(psi, filename);
+        }
+
         for(int sw = 1; sw <= sweeps.nsweep(); ++sw)
         {
-            
-            
+
+
             cpu_time sw_time;
             args.add("Sweep",sw);
             args.add("Cutoff",sweeps.cutoff(sw));
@@ -227,7 +237,7 @@ namespace itensor {
             args.add("Maxm",sweeps.maxm(sw));
             args.add("Noise",sweeps.noise(sw));
             args.add("MaxIter",sweeps.niter(sw));
-            
+
             if(!PH.doWrite()
                && args.defined("WriteM")
                && sweeps.maxm(sw) >= args.getInt("WriteM"))
@@ -237,27 +247,27 @@ namespace itensor {
                     println("\nTurning on write to disk, write_dir = ",
                             args.getString("WriteDir","./"));
                 }
-                
+
                 //psi.doWrite(true);
                 PH.doWrite(true);
             }
-            
+
             for(int b = 1, ha = 1; ha <= 2; sweepnext(b,ha,N))
             {
                 if(!quiet)
                 {
                     printfln("Sweep=%d, HS=%d, Bond=(%d,%d)",sw,ha,b,(b+1));
                 }
-                
+
                 PH.position(b,psi);
-                
+
                 auto phi = psi.A(b)*psi.A(b+1);
-                
+
                 energy = davidson(PH,phi,args);
-                
+
                 auto spec = psi.svdBond(b,phi,(ha==1?Fromleft:Fromright),PH,args);
-                
-                
+
+
                 if(!quiet)
                 {
                     printfln("    Truncated to Cutoff=%.1E, Min_m=%d, Max_m=%d",
@@ -268,73 +278,78 @@ namespace itensor {
                              spec.truncerr(),
                              showm(linkInd(psi,b)) );
                 }
-                
+
                 obs.lastSpectrum(spec);
-                
+
                 args.add("AtBond",b);
                 args.add("HalfSweep",ha);
                 args.add("Energy",energy);
                 args.add("Truncerr",spec.truncerr());
-                
+
                 obs.measure(args);
-                
+
             } //for loop over b
-            
+
             auto sm = sw_time.sincemark();
             //printfln("    Sweep %d CPU time = %s (Wall time = %s)",
             //         sw,showtime(sm.time),showtime(sm.wall));
-            
+
             E_v.push_back(energy);
             SvN_v.push_back(args.getReal("S_ent"));
             bond_v.push_back(args.getInt("Largest m"));
             trun_v.push_back(args.getReal("Largest truncation"));
             cpu_v.push_back(sm.time);
             wall_v.push_back(sm.wall);
-            
+
+
+            //save psi to a file at each DMRG iteration
+            if(save_psi){
+            filename="psi"+std::to_string(sw);
+            write_to_file::wavefunction(psi, filename);
+            }
+
             printf(" | %-3d | %-8g | %-10g |  %-4d | %-5e | %-6s | %-6s |", sw, energy, args.getReal("S_ent"), args.getInt("Largest m"), args.getReal("Largest truncation"),showtime(sm.time), showtime(sm.wall));
-            
+
 
             if(obs.checkDone(args) ) break;
-            
+
         } //for loop over sw
-        
-        std::string filename;
-        auto runname=Args::global().getString("runname");
-        
-        filename ="DMRG_E.dat";
+
+        filename ="E.dat";
         write_to_file::vector(E_v, filename);
-        
-        filename = "DMRG_SvN.dat";
+
+        filename = "SvN.dat";
         write_to_file::vector(SvN_v, filename);
-        
-        filename = "DMRG_bond.dat";
-        write_to_file::vector(bond_v, filename);
-        
-        filename = "DMRG_trun.dat";
-        write_to_file::vector(trun_v, filename);
-        
-        filename = "DMRG_bond.dat";
+
+        filename = "bond.dat";
         write_to_file::vector(bond_v, filename);
 
-        filename = "DMRG_cpu.dat";
+        filename = "trun.dat";
+        write_to_file::vector(trun_v, filename);
+
+        filename = "bond.dat";
+        write_to_file::vector(bond_v, filename);
+
+        filename = "cpu.dat";
         write_to_file::vector(cpu_v, filename);
-        
-        filename = "DMRG_wall.dat";
+
+        filename = "wall.dat";
         write_to_file::vector(wall_v, filename);
 
 
-        
-        
-        
+
+
+
+
         println();
         println("===========================================================================");
         println("===========================================================================");
 
         psi.normalize();
-        
+
         return energy;
     }
-    
+
 } //namespace itensor
 
 

@@ -181,15 +181,7 @@ truncate(Vector & P,
     //get correct state count m
     auto m = n+1;
 
-    if(n+1 < origm) 
-        {
-        docut = (P(n+1) + P(n))/2.;
-        //Check for a degeneracy:
-        if(std::fabs(P(n+1)-P(n)) < 1E-3*P(n)) 
-            {
-            docut += 1E-3*P(n);
-            }
-        }
+    if(m < origm) docut = (P(m) + P(m-1))/2. - 1E-5*P(m);
 
     resize(P,m); 
 

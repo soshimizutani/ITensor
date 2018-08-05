@@ -117,9 +117,6 @@ template <typename... VArgs>
 IQTensor
 randomTensorC(QN const& q, VArgs&&... vargs);
 
-bool
-isEmpty(IQTensor const& T);
-
 //mixedIQTensor constructs
 //an IQTensor with MixedQN storage
 //allowing setting elements in

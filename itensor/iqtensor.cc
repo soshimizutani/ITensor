@@ -357,7 +357,9 @@ combiner(std::vector<IQIndex> cinds,
     {
     if(cinds.empty()) Error("No indices passed to combiner");
     auto cname = args.getString("IndexName","cmb");
-    auto itype = getIndexType(args,"IndexType",Link);
+    auto itype = getIndexType(args,"IndexType",cinds.front().type());
+    auto cr = cinds.size();
+
 
     auto cdir = Out;
     if(args.defined("IndexDir"))
@@ -394,7 +396,7 @@ combiner(std::vector<IQIndex> cinds,
         QNm qm;
         //For this sector, figure out the total QN (qm.q)
         //and combined sector size (qm.m)
-        for(auto j : range(cinds))
+        for(auto j : range(cr))
             {
             qm.q += cinds[j].qn(1+I[j]) * cinds[j].dir() * cdir;
             qm.m *= cinds[j].index(1+I[j]).m();
@@ -417,9 +419,7 @@ combiner(std::vector<IQIndex> cinds,
 
     auto cstore = stdx::reserve_vector<IndexQN>(qms.size());
     for(auto n : range(qms)) 
-        {
         cstore.emplace_back(Index{nameint("c",n),qms[n].m,itype},qms[n].q);
-        }
     auto cind = IQIndex{cname,std::move(cstore),cdir};
 
     auto newind = IQIndexSetBuilder(1+cinds.size());
@@ -492,10 +492,17 @@ dir(IQTensor const& T,
 	}
 
 bool
-isEmpty(IQTensor const& T)
+isZero(const IQTensor& T, const Args& args)
     {
-    if(not T.store()) return true;
-    return doTask(IsEmpty{},T.store());
+    Error("Not implemented");
+    //if(T.empty()) return true;
+    ////done with all fast checks
+    //if(args.getBool("Fast",false)) return false;
+    //for(const ITensor& t : T.blocks())
+    //    {
+    //    if(!isZero(t)) return false;
+    //    }
+    return true;
     }
 
 //template<typename T>

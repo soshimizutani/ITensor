@@ -62,8 +62,8 @@ measure(const Args& args)
         Real percentdone = (100.*t)/ttotal;
         if(percentdone < 99.5 || (std::fabs(t-ttotal) < 1E-10))
             {
-            printf("\b\b\b%2.f%%",percentdone);
-            std::cout.flush();
+            //printf("\b\b\b%2.f%%",percentdone);
+            //std::cout.flush();
             }
         }
     }

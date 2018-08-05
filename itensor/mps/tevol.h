@@ -60,7 +60,7 @@ gateTEvol(Iterable const& gatelist,
         }
 
     Real tsofar = 0;
-    Real tot_norm = psi.normalize();
+    Real tot_norm = psi.norm();//alize();
     if(verbose) 
         {
         printfln("Taking %d steps of timestep %.5f, total time %.5f",nt,tstep,ttotal);

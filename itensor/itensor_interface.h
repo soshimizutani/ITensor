@@ -36,8 +36,6 @@ class ITensorT
     using index_type = index_type_;
     using indexval_type = typename index_type::indexval_type;
     using indexset_type = IndexSetT<index_type>;
-    using range_type = RangeT<index_type>;
-    using size_type = typename range_type::size_type;
     using storage_ptr = PData;
     using const_storage_ptr = CPData;
     using scale_type = LogNum;
@@ -89,10 +87,6 @@ class ITensorT
     indexset_type const&
     inds() const { return is_; }
 
-    //Access index
-    index_type const&
-    index(size_type I) const { return is_.index(I); }
-
     //evaluates to false if default constructed
     explicit operator bool() const { return bool(is_) || bool(store_); }
 
@@ -100,16 +94,9 @@ class ITensorT
     Real
     real(IndexVals&&... ivs) const;
 
-    template <typename IV, typename... IVs>
+    template <typename... IndexVals>
     Cplx
-    cplx(IV const& iv1, IVs&&... ivs) const;
-
-    template <typename... Ints>
-    Cplx
-    cplx(int iv1, Ints&&... ivs) const;
-
-    Cplx
-    cplx() const;
+    cplx(IndexVals&&... ivs) const;
 
     //Set element at location given by collection
     //of IndexVals or IQIndexVals. Will not switch storage
@@ -119,19 +106,11 @@ class ITensorT
     set(IV const& iv1, VArgs&&... ivs)
         -> stdx::if_compiles_return<void,decltype(iv1.index),decltype(iv1.val)>;
 
-    template<typename Int, typename... VArgs>
-    auto
-    set(Int iv1, VArgs&&... ivs)
-        -> stdx::enable_if_t<std::is_same<Int,int>::value,void>;
-
     void
     set(Cplx val);
 
     void
     set(std::vector<indexval_type> const& ivs, Cplx val);
-
-    void
-    set(std::vector<int> const& ivs, Cplx val);
 
     //
     // Index Prime Level Methods
@@ -146,11 +125,6 @@ class ITensorT
     ITensorT& 
     prime(VarArgs&&... vargs)
         { itensor::prime(is_,std::forward<VarArgs>(vargs)...); return *this; }
-
-    template<typename... VarArgs>
-    ITensorT& 
-    primeLevel(VarArgs&&... vargs)
-        { itensor::primeLevel(is_,std::forward<VarArgs>(vargs)...); return *this; }
 
     template<typename... VarArgs>
     ITensorT&
@@ -263,23 +237,6 @@ class ITensorT
     ITensorT&
     operator/=(ITensorT const& other);
 
-    template<typename... Indxs>
-    typename std::enable_if<not (stdx::and_<std::is_same<index_type, Indxs>...>::value), 
-                             ITensorT<index_type>&>::type
-    order(index_type const& ind1, Indxs const&... inds);
-
-    template<typename... Indxs>
-    typename std::enable_if<(stdx::and_<std::is_same<index_type, Indxs>...>::value), 
-                             ITensorT<index_type>&>::type
-    order(index_type const& ind1, Indxs const&... inds);
-
-    template<typename... Indxs>
-    ITensorT&
-    order(std::string const& dots, Indxs const&... inds);
-
-    ITensorT&
-    order(indexset_type const& iset);
-
     //
     // Read from and write to streams
     //
@@ -356,11 +313,6 @@ template<typename IndexT, typename... VarArgs>
 ITensorT<IndexT>
 prime(ITensorT<IndexT> A, 
       VarArgs&&... vargs);
-
-template<typename IndexT, typename... VarArgs>
-ITensorT<IndexT>
-primeLevel(ITensorT<IndexT> A, 
-           VarArgs&&... vargs);
 
 template<typename IndexT, typename... VarArgs>
 ITensorT<IndexT>
@@ -458,7 +410,7 @@ rank(ITensorT<I> const& T);
 //(same as rank)
 template<typename I>
 long
-ord(ITensorT<I> const& T);
+order(ITensorT<I> const& T);
 
 //Compute the norm of an ITensor.
 //Thinking of elements as a vector, equivalent to sqrt(v*v).

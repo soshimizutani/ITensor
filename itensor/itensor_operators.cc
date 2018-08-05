@@ -134,51 +134,6 @@ operator*=(ITensorT const& R)
 template ITensorT<Index>& ITensorT<Index>::operator*=(ITensorT<Index> const& R);
 template ITensorT<IQIndex>& ITensorT<IQIndex>::operator*=(ITensorT<IQIndex> const& R);
 
-template<typename IndexT>
-ITensorT<IndexT>& ITensorT<IndexT>::
-order(IndexSetT<IndexT> const& iset)
-    {
-    auto& A = *this;
-    auto Ais = A.inds();
-    auto r = Ais.r();
-
-    if(r != size_t(iset.r()))
-        {
-        println("---------------------------------------------");
-        println("Tensor indices = \n",Ais,"\n");
-        println("---------------------------------------------");
-        println("Indices provided = \n",iset,"\n");
-        println("---------------------------------------------");
-        Error(format("Wrong number of Indexes passed to order (expected %d, got %d)",r,iset.r()));
-        }
-
-    // Get permutation
-    auto P = Permutation(r);
-    calcPerm(Ais,iset,P);
-    if(isTrivial(P))
-        {
-        return A;
-        }
-    // If not trivial, use permutation to get new index set
-    // This is necessary to preserve the proper arrow direction of IQIndex
-    auto bind = RangeBuilderT<IndexSetT<IndexT>>(r);
-    for(auto i : range(r))
-        {
-        bind.setIndex(P.dest(i),Ais[i]);
-        }
-    auto Bis = bind.build();
-
-    auto O = Order<IndexT>{P,Ais,Bis};
-    if(A.store())
-        doTask(O, A.store());
-
-    A.is_.swap(Bis);
-
-    return A;
-    }
-template ITensorT<Index>& ITensorT<Index>::order(IndexSetT<Index> const& iset);
-template ITensorT<IQIndex>& ITensorT<IQIndex>::order(IndexSetT<IQIndex> const& iset);
-
 template<typename IndexT> 
 ITensorT<IndexT>& ITensorT<IndexT>::
 operator-=(const ITensorT& R)
